@@ -1,28 +1,56 @@
 <!DOCTYPE html>
-<head>
-  <meta charset='UTF-8'>
-  <script>
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function () {
-      if (this.readyState == 4) {
-        if (this.status == 200) {
-          document.getElementById('status').innerHTML = this.responseText;
-        }
-        else {
-          document.getElementById('status').innerHTML = 'Disconnected';
-      }
-      } 
-    };
+<html lang="en">
 
-    function powerSwitch() {
-      xhttp.open('GET', '/switch', true);
-      xhttp.send();
-    }
-  </script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>ESP 8266 Webserver</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<title>Remote LED</title>
-<body>
-  <input type="button" onclick="powerSwitch()" value="Switch" />
-  <p id="status">LED Status</p>
-</body>
+
+<body">
+    <div align="center" class="container">
+        <h1 id="header"></h1>
+        <table align="center">
+            <tr>
+                <td>
+                    <h1 id="123" class="state">Relay 1</h1>
+                </td>
+                <td>
+                    <label class="switch">
+                        <input id="relay1" type="checkbox">
+                        <span class="slider round"></span>
+                    </label>
+                </td>
+            </tr>
+
+            <tr>
+                <td width="60%">
+                    <h1 class="state">Relay 2</h1>
+                </td>
+                <td>
+                    <label class="switch">
+                        <input id="relay2" type="checkbox">
+                        <span class="slider round"></span>
+                    </label>
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    <h1>Val : <span class="output" id="range_out">0</span> </h1>
+                </td>
+                <td>
+                    <input type="range" min="0" max="1023" value="10" id="range_in">
+                </td>
+            </tr>
+
+        </table>
+        <div class="footer"><h1>Esp8266 WebServer V 0.1</h1></div>
+    </div>
+    <script src="typeit.min.js"></script>
+    <script src="script.js"></script>
+    </body>
+
 </html>

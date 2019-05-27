@@ -1,98 +1,113 @@
 import ESP8266WebServer
-import network
-import machine
+import network,json
+from machine import Pin, PWM
 
-GPIO_NUM = 2 # Builtin led
+STA_SSID = "your-ssid"
+STA_PSK = "Meng005252"
 
-# Wi-Fi configuration
-STA_SSID = "YOUR SSID"
-STA_PSK = "YOUR PASSWORD"
 
-# HTML content for "/"
-rootPage = """\
-  <!DOCTYPE html>
-  <head>
-    <meta charset='UTF-8'>
-  </head>
-  <title>{0}</title>
-  <body>
-    {0}Status：<span style='color:{1}'>{2}</span><br>
-    <a href='/cmd?led={3}'>{4}</a><br>
-    <a href='/'>HOME</a>
-  </body>
-  </html>
+rootPage = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        h1{
+            margin: 10px auto;
+            font-family: monaco,Consolas,Lucida Console,monospace; 
+            color: white;
+        }
+        body{
+            background-color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <center>
+        <h1 id="count"></h1>
+    </center>
+    
+    <script>
+        function c(val,dot){
+            if(val > 0){
+                document.getElementById("count").innerHTML = "Redirect" + dot;
+            }
+            else{
+                window.location = "http://192.168.4.1:8899/www/index2.html";
+                //window.location = "http://www.google.com";
+            }
+        }
+        var i = 5;
+        var str = "";
+        setInterval(function () {
+            str += ".";
+            c(i,str);
+            i--;
+        }, 1000);
+    </script>
+</body>
+</html>
   """
-
-# Disable AP interface
-ap_if = network.WLAN(network.AP_IF)
-if ap_if.active():
-  ap_if.active(False)
-  
-# Connect to Wi-Fi if not connected
 sta_if = network.WLAN(network.STA_IF)
-if not ap_if.active():
-  sta_if.active(True)
-if not sta_if.isconnected():
-  sta_if.connect(STA_SSID, STA_PSK)
-  # Wait for connecting to Wi-Fi
-  while not sta_if.isconnected(): 
-    pass
+sta_if.active(False)
 
-# Show IP address
-print("Server started @ ", sta_if.ifconfig()[0])
+ap = network.WLAN(network.AP_IF) 
+ap.active(True)        
+ap.config(essid='ESP-AP')
+ap.config(authmode=3, password='123456789')
+print('Please connect IP http://192.168.4.1:8899')
 
-# Get pin object for controlling builtin LED
-pin = machine.Pin(GPIO_NUM, machine.Pin.OUT)
-pin.on() # Turn LED off (it use sinking input)
 
-# Handler for path "/" 
+relay1 = Pin(4, Pin.OUT)
+relay2 = Pin(0, Pin.OUT)
+moter = PWM(Pin(5), 50)
+relay2.value(1)
+relay1.value(1)
+
+
 def handleRoot(socket, args):
   global rootPage
-  # Replacing title text and display text color according 
-  # to the status of LED
-  response = rootPage.format(
-    "Remote LED", 
-    "red" if pin.value() else "green",
-    "Off" if pin.value() else "On",
-    "on" if pin.value() else "off",
-    "Turn on" if pin.value() else "Turn off"
-  )
-  # Return the HTML page
+  response = rootPage
   ESP8266WebServer.ok(socket, "200", response)
 
-# Handler for path "/cmd?led=[on|off]"    
-def handleCmd(socket, args):
-  if 'led' in args:
-    if args['led'] == 'on':
-      pin.off()
-    elif args['led'] == 'off':
-      pin.on()
-    handleRoot(socket, args)
-  else:
-    ESP8266WebServer.err(socket, "400", "Bad Request")
+def handleState(socket, args):
+  print('Relay 1 :',relay1.value())
+  print('Relay 2 :',relay2.value())
+  print('Moter :',moter.duty())
+  jason_ = {"relay1":relay1.value(),"relay2":relay2.value(),"moter":moter.duty()}
+  jason_ = json.dumps(jason_)
+  ESP8266WebServer.ok(socket, "200",jason_)
 
-# handler for path "/switch" 
+
 def handleSwitch(socket, args):
-  pin.value(not pin.value()) # Switch back and forth
-  ESP8266WebServer.ok(
-    socket, 
-    "200", 
-    "On" if pin.value() == 0 else "Off")
+  if args['val'] == '1':
+      relay1.value(not relay1.value())
+      ESP8266WebServer.ok(socket, "200", "r1_On" if relay1.value() == 0 else "r1_Off")
+  elif args['val'] == '2':
+      relay2.value(not relay2.value())
+      ESP8266WebServer.ok(socket, "200", "r2_On" if relay2.value() == 0 else "r2_Off")
 
-# Start the server @ port 8899
+def handleMoter(socket,args):
+  val = int(args['val'])
+  moter.duty(val)
+
+
 ESP8266WebServer.begin(8899)
 
-# Register handler for each path
 ESP8266WebServer.onPath("/", handleRoot)
-ESP8266WebServer.onPath("/cmd", handleCmd)
+ESP8266WebServer.onPath("/get_state", handleState)
 ESP8266WebServer.onPath("/switch", handleSwitch)
+ESP8266WebServer.onPath("/moter", handleMoter)
 
-# Setting the path to documents
+
 ESP8266WebServer.setDocPath("/www")
 
 try:
   while True:
-    # Let server process requests
     ESP8266WebServer.handleClient()
 except:
   ESP8266WebServer.close()
